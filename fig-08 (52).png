@@ -1,0 +1,43 @@
+# UDP Protocol Analysis
+
+This lab breaks down the UDP header field by field, then confirms how a client/server exchange reverses source and destination ports between the request and the reply.
+
+**1. What fields make up the UDP header?**
+
+Four fields: Source Port, Destination Port, Length, and Checksum.
+
+![UDP header showing Source Port, Destination Port, Length, and Checksum fields](images/fig-01.png)
+
+**2. How long is each field, and the header overall?**
+
+Each field is 2 bytes: Source Port (2) + Destination Port (2) + Length (2) + Checksum (2) = **8 bytes total**.
+
+**3. What does the Length field represent? What does it show in this capture?**
+
+Length is the size of the UDP header **plus** the UDP payload. In this capture, Length = 84 bytes and the payload = 76 bytes → 8-byte header + 76-byte payload = 84 bytes. ✓
+
+**4. What is the maximum possible UDP payload size?**
+
+65,527 bytes. UDP's Length field is 16 bits (max value 65,535), minus the fixed 8-byte UDP header.
+
+**5. What is the largest possible source port number?**
+
+65,535 — port numbers are 16-bit values.
+
+**6. What protocol number identifies UDP at the IP layer?**
+
+17 in decimal (`0x11` in hex). Confirmed in the IPv4 header: Protocol = UDP (17).
+
+![IPv4 header showing Protocol field set to UDP (17)](images/fig-02.png)
+
+**7. Compare a request and its reply. How do the ports relate?**
+
+Packets 24 and 25 form a request/reply pair:
+
+- Packet 24 (request): Source Port `52259` → Destination Port `443`
+- Packet 25 (reply): Source Port `443` → Destination Port `52259`
+
+The client's source port becomes the destination port in the reply, and the server's port becomes the reply's source port — the standard request/reply port-reversal pattern.
+
+![UDP request packet with source port 52259 and destination port 443](images/fig-03.png)
+![UDP reply packet with source and destination ports reversed](images/fig-04.png)

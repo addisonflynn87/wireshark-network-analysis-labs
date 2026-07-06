@@ -1,0 +1,82 @@
+# DHCP Lease Cycle Analysis
+
+This lab traces a full DHCP lease cycle — Discover, Offer, Request, ACK — plus the ARP traffic a Windows host generates around it to check for address conflicts.
+
+**1. Are DHCP messages sent over UDP or TCP?**
+
+UDP. DHCP clients use UDP port 68, and DHCP servers use UDP port 67.
+
+![DHCP packet list showing the Discover/Offer/Request/ACK exchange over UDP ports 67/68](images/fig-01.png)
+
+**2. Diagram the DHCP Discover/Offer/Request/ACK exchange.**
+
+```
+Client (0.0.0.0:68)  --DHCP Discover-->  Server (192.168.1.1:67)
+Server               --DHCP Offer----->  Client
+Client               --DHCP Request-->   Server
+Server               --DHCP ACK-------->  Client
+```
+
+Ports are the standard DHCP ports 67 (server) and 68 (client).
+
+**3. What is the link-layer address of your host?**
+
+`30:d0:42:xx:xx:xx`
+
+**4. What values differentiate the Discover message from the Request message?**
+
+The Request contains Option 50 (Requested IP Address `192.168.1.137`), Option 54 (DHCP Server Identifier `192.168.1.1`), and DHCP Message Type = Request — none of which appear in the Discover.
+
+**5. What are the transaction IDs, and what is their purpose?**
+
+- First exchange (Discover/Offer): `0x7befa33c`
+- Second exchange (Request/ACK): `0x8fa4071a`
+
+Transaction IDs tie the messages of a single DHCP conversation together so the client can match replies to its own requests.
+
+**6. What are the source and destination IP addresses for each message?**
+
+| Message | Source | Destination |
+|---|---|---|
+| Discover | 0.0.0.0 | 255.255.255.255 |
+| Offer | 192.168.1.1 | 192.168.1.137 |
+| Request | 0.0.0.0 | 255.255.255.255 |
+| ACK | 192.168.1.1 | 192.168.1.137 |
+
+![DHCP Offer packet detail showing source/destination IP addressing](images/fig-02.png)
+
+**7. What is the IP address of the DHCP server?**
+
+`192.168.1.1`
+
+**8. What IP address is offered to the client?**
+
+`192.168.1.137`
+
+**9. Is a relay agent present?**
+
+No. The Relay Agent IP field is `0.0.0.0`, indicating the client and server are on the same local network with no relay in between.
+
+**10. What is the purpose of the router and subnet mask options returned by the server?**
+
+The Router option identifies the default gateway (`192.168.1.1`); the Subnet Mask option (`255.255.255.0`) tells the client which addresses are on its local network versus which need to be routed.
+
+**11. Did the client accept the offer?**
+
+Yes — the client requested `192.168.1.137` in its Request message and received a DHCP ACK confirming the lease.
+
+**12. What is the lease time?**
+
+12 hours (43,200 seconds).
+
+**13. What is the purpose of the DHCP Release message?**
+
+It tells the server the client is voluntarily giving up its address so it can be reassigned immediately. If a client disconnects without sending Release (e.g., it loses power), the address simply remains reserved until the lease naturally expires.
+
+![DHCP Release message from the client to the server](images/fig-03.png)
+
+**14. Were any ARP packets observed around the DHCP exchange? Why?**
+
+Yes — ARP Probes, an ARP Request, and an ARP Announcement were all observed. Windows uses ARP Probes before finalizing a new address to make sure no other device on the network is already using it (duplicate address detection), and follows up with a gratuitous ARP Announcement once the address is confirmed, so other devices on the LAN update their own ARP caches with its new mapping.
+
+![ARP packet list showing ARP Probes, Request, and Announcement traffic around the DHCP lease](images/fig-04.png)

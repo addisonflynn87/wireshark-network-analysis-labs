@@ -1,0 +1,29 @@
+# Wireshark Fundamentals: Capture, Filtering & Timing Analysis
+
+This lab is a first look at Wireshark: capturing live traffic, applying a display filter, and reading the timing and addressing information Wireshark reports for a simple HTTP request/response exchange.
+
+**1. Name three different protocols that appear in the packet listing before any filter is applied.**
+
+`HTTP`, `TCP`, and `TLS v1.2` were all visible in the unfiltered capture.
+
+**2. How much time elapsed from when the HTTP GET message was sent until the HTTP OK reply was received?**
+
+- GET packet (#201) — Time = 6.726634800
+- HTTP/1.1 200 OK packet (#204) — Time = 6.788712600
+
+`6.788712600 − 6.726634800 = 0.0620778 seconds`
+
+**3. What is the IP address of your computer? What is the IP address of the destination (gaia.cs.umass.edu)?**
+
+- My computer — `192.168.1.137`
+- gaia.cs.umass.edu — `128.119.245.12`
+
+**4. Show the packet content for the GET request and the OK response.**
+
+Packet #201 (GET request):
+
+![Wireshark frame detail for the HTTP GET request, packet #201, showing the request line and IP/TCP headers](images/fig-01.png)
+
+Packet #204 (200 OK response):
+
+![Wireshark frame detail for the HTTP 200 OK response, packet #204, showing the response line and IP/TCP headers](images/fig-02.png)

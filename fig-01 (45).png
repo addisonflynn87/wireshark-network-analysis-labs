@@ -1,0 +1,57 @@
+# ICMP & Traceroute Latency Analysis
+
+This lab examines ICMP Echo Request/Reply (ping) and Time Exceeded (traceroute) messages, and uses a real traceroute capture to spot where latency jumps as the path crosses network boundaries.
+
+**1. Ping a host. What are the host and destination IP addresses?**
+
+Host: `192.168.1.137` → Destination: `143.89.209.9`
+
+![ICMP Echo Request/Reply exchange showing host and destination IP addresses](images/fig-01.png)
+
+**2. Does the ICMP packet contain source and destination port numbers?**
+
+No. ICMP operates directly on top of IP and doesn't use TCP or UDP, so it has no concept of ports.
+
+**3–4. What ICMP type/code and fields appear in the request vs. the reply?**
+
+| | Echo Request | Echo Reply |
+|---|---|---|
+| Type | 8 | 0 |
+| Code | 0 | 0 |
+| Fields | Checksum, Identifier, Sequence Number, Data | Checksum, Identifier, Sequence Number, Data |
+
+Checksum, Identifier, and Sequence Number are each 2 bytes.
+
+![ICMP header fields for the Echo Request and Echo Reply](images/fig-02.png)
+
+**5. Run a traceroute-style ping to a farther host. What are the host and target addresses?**
+
+Host: `192.168.1.137` → Target: `128.93.162.83`
+
+![ICMP traceroute packet detail showing host and target addresses](images/fig-03.png)
+
+**6. Does traceroute use ICMP, TCP, or UDP?**
+
+ICMP — protocol number 1. (UDP would be protocol number 17.)
+
+**7. What ICMP type/code does the outgoing traceroute probe use?**
+
+Still an ordinary ICMP Echo Request (Type 8, Code 0) — traceroute doesn't change the ICMP message type, it changes the **TTL** on each successive probe to force intermediate routers to respond.
+
+**8. What does an ICMP Time Exceeded error packet contain?**
+
+Type, Code, Checksum, an unused field, and then a copy of the *original* IP header plus the beginning of the original ICMP Echo Request that triggered the error — enough for the sender to match the error back to the probe that caused it.
+
+**9. Looking at the full traceroute sequence, which packets are replies from the destination vs. intermediate routers?**
+
+The last three packets are ICMP Echo Reply packets from the destination host itself. All the earlier packets are ICMP Time Exceeded messages from routers along the path whose TTL expired before reaching the destination.
+
+![Traceroute sequence — early hop returning Time Exceeded](images/fig-04.png)
+![Traceroute sequence — middle hop returning Time Exceeded](images/fig-05.png)
+![Traceroute sequence — later hops approaching the destination](images/fig-06.png)
+
+**10. Where is the largest per-hop delay, and what might explain it?**
+
+The largest jump is between Hop 14 and Hop 15, where round-trip latency jumps from roughly 18 ms to 127 ms. That kind of jump is typical of a long-haul/international backbone transition — in this trace it lines up with the path entering the French RENATER research network.
+
+![Traceroute hop-by-hop latency showing the jump at the international backbone transition](images/fig-07.png)

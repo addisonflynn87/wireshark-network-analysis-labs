@@ -1,0 +1,106 @@
+# NAT Traffic Analysis (Home-Side vs. ISP-Side)
+
+This lab compares two captures of the *same* traffic taken from opposite sides of a home router: `NAT_home_side` (behind the router, private addressing) and `NAT_ISP_side` (on the public internet side). Comparing the two shows exactly what Network Address Translation rewrites — and what it leaves alone.
+
+**1. What is the IP address of the client?**
+
+The client's IP address is `192.168.1.100`. Confirmed in the IPv4 header of the HTTP GET packet (Source Address: `192.168.1.100`).
+
+![IPv4 header of the HTTP GET packet showing the client's source address](images/fig-01.png)
+
+**2. Isolate the HTTP traffic between the client and the Google server.**
+
+Filter used: `http && ip.addr == 64.233.169.104`
+
+This displays only HTTP traffic between the client and the Google server (`64.233.169.104`).
+
+![Filtered packet list showing only HTTP traffic to/from the Google server](images/fig-02.png)
+
+**3. Examine the HTTP GET sent at time 7.109267.**
+
+| Field | Value |
+|---|---|
+| Time | 7.109267 |
+| Source IP | 192.168.1.100 |
+| Destination IP | 64.233.169.104 |
+| Source Port | 4335 |
+| Destination Port | 80 |
+
+![HTTP GET packet header detail](images/fig-03.png)
+![IP header of the GET packet](images/fig-04.png)
+![TCP header of the GET packet](images/fig-05.png)
+![HTTP layer of the GET packet](images/fig-06.png)
+![Full frame summary of the GET packet](images/fig-07.png)
+
+**4. At what time is the corresponding HTTP 200 OK received?**
+
+| Field | Value |
+|---|---|
+| Time | 7.158797 |
+| Source IP | 64.233.169.104 |
+| Destination IP | 192.168.1.100 |
+| Source Port | 80 |
+| Destination Port | 4335 |
+
+![HTTP 200 OK packet header detail](images/fig-08.png)
+![IP header of the 200 OK packet](images/fig-09.png)
+![TCP header of the 200 OK packet](images/fig-10.png)
+![HTTP layer of the 200 OK packet](images/fig-11.png)
+![Full frame summary of the 200 OK packet](images/fig-12.png)
+
+**5. Trace the TCP three-way handshake that set up this connection.**
+
+- SYN sent at `7.075657` — 192.168.1.100:4335 → 64.233.169.104:80
+- SYN/ACK received at `7.108986` — 64.233.169.104:80 → 192.168.1.100:4335
+- ACK sent at `7.109053` — 192.168.1.100:4335 → 64.233.169.104:80
+
+Packet 53 = SYN, Packet 54 = SYN/ACK, Packet 55 = ACK.
+
+![TCP SYN packet](images/fig-13.png)
+![TCP SYN/ACK packet](images/fig-14.png)
+![TCP ACK packet completing the handshake](images/fig-15.png)
+
+**6. Find the same HTTP GET in the ISP-side trace. What changed?**
+
+The corresponding HTTP GET appears at time `6.091618`, with Source IP `71.192.34.104` (the router's public/WAN address), Destination IP `64.233.169.104`, Source Port `4335`, Destination Port `80`.
+
+**Same as the home-side capture:** Destination IP, Source Port, Destination Port.
+**Different:** Source IP changed from the private `192.168.1.100` to the public `71.192.34.104` — this is NAT translating the private address to the router's public one.
+
+![HTTP GET as seen from the ISP side, showing the translated source IP](images/fig-16.png)
+![IP header confirming the translated address](images/fig-17.png)
+![TCP header on the ISP side](images/fig-18.png)
+![HTTP layer on the ISP side](images/fig-19.png)
+![Full frame summary on the ISP side](images/fig-20.png)
+
+**7. Are any fields in the HTTP GET message itself changed by NAT?**
+
+No — the HTTP message body/headers are untouched. Only the IP layer changes: the Version, Header Length, and Flags fields stay the same, but the **Checksum changed**, because NAT rewrote the source IP address and the IP header checksum has to be recalculated whenever the header itself changes.
+
+![IP header showing the recalculated checksum after NAT rewrote the source address](images/fig-19.png)
+![Comparison view of the header fields before/after translation](images/fig-05.png)
+
+**8. In the ISP-side trace, when is the first HTTP 200 OK received?**
+
+Time `6.117570` — Source IP `64.233.169.104`, Destination IP `71.192.34.104` (translated), Source Port 80, Destination Port 4335.
+
+**Same as home-side:** Source IP, Source Port, Destination Port. **Different:** Destination IP changed from `192.168.1.100` to `71.192.34.104`.
+
+![HTTP 200 OK as seen from the ISP side](images/fig-21.png)
+![IP header on the ISP side showing the translated destination address](images/fig-22.png)
+![TCP header confirming the same ports](images/fig-23.png)
+
+**9. When were the client-to-server SYN and server-to-client SYN/ACK captured on the ISP side?**
+
+- Client-to-Server SYN — Time `6.035475` — 71.192.34.104:4335 → 64.233.169.104:80
+- Server-to-Client SYN/ACK — Time `6.067775` — 64.233.169.104:80 → 71.192.34.104:4335
+- ACK — Time `6.068754` — 71.192.34.104:4335 → 64.233.169.104:80
+
+**Same as home-side handshake:** Source Port, Destination Port. **Different:** the private IP `192.168.1.100` was translated to the public IP `71.192.34.104` throughout the entire handshake — NAT rewrites every packet in a flow consistently, not just the first one.
+
+![ISP-side SYN packet](images/fig-24.png)
+![ISP-side SYN/ACK packet](images/fig-25.png)
+![ISP-side ACK packet](images/fig-26.png)
+![Side-by-side comparison of home-side vs ISP-side addressing](images/fig-27.png)
+![Additional confirming frame detail](images/fig-28.png)
+![Additional confirming frame detail](images/fig-29.png)

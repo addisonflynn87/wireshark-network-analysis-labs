@@ -1,0 +1,128 @@
+# Wireshark Lab - Ethernet & ARP
+
+This lab uses Wireshark to examine the structure of Ethernet II frames and to trace how the Address Resolution Protocol (ARP) resolves IP addresses to MAC addresses on a local network.
+
+## Ethernet Frame Structure
+
+**1. What is the 48-bit Ethernet address of your computer?**
+
+`30:d0:42:xx:xx:xx`
+
+**2. What is the 48-bit destination address in the Ethernet frame? Is this the Ethernet address of gaia.cs.umass.edu? (Hint: the answer is no). What device has this as its Ethernet address?**
+
+The 48-bit destination address is `10:2b:aa:xx:xx:xx`. This is **not** the Ethernet address of gaia.cs.umass.edu. It belongs to my **default gateway (router)** — a Sagemcom device at 192.168.1.1. Because gaia.cs.umass.edu is on a remote network, Ethernet frames cannot be sent directly to it. My computer addresses the frame to the local router, which then forwards the packet across the internet toward the destination IP.
+
+**3. Give the hexadecimal value for the two-byte Frame type field. What upper layer protocol does this correspond to?**
+
+`08 00` - IPv4 (0x0800)
+
+![Wireshark frame detail showing an HTTP 301 response, with Ethernet source (router) and destination (local host) MAC addresses and the 0x0800 IPv4 type field visible in the hex pane](images/fig-02.png)
+
+**4. How many bytes from the very start of the Ethernet frame does the ASCII "G" in "GET" appear in the Ethernet frame?**
+
+54 Bytes
+
+**5. What is the value of the Ethernet source address? Is this the address of your computer, or of gaia.cs.umass.edu (Hint: the answer is no). What device has this as its Ethernet address?**
+
+`10:2b:aa:xx:xx:xx` — **No**, this is not gaia.cs.umass.edu. It is my **default gateway (router)**.
+
+**6. What is the destination address in the Ethernet frame? Is this the Ethernet address of your computer?**
+
+`30:d0:42:xx:xx:xx`, Yes it is my computer's MAC Address
+
+**7. Give the hexadecimal value for the two-byte Frame type field. What upper layer protocol does this correspond to?**
+
+`0x0800` = **IPv4**
+
+**8. How many bytes from the very start of the Ethernet frame does the ASCII "O" in "OK" (i.e., the HTTP response code) appear in the Ethernet frame?**
+
+My capture returned an HTTP 301 response rather than 200 OK. Applying the same byte calculation — 14 bytes Ethernet + 20 bytes IP + 20 bytes TCP = 54 header bytes — the HTTP response phrase begins at byte offset 67. This is confirmed by clicking the response line in Wireshark, which highlights the corresponding bytes in the hex pane starting at offset 0x43.
+
+**9. Write down the contents of your computer's ARP cache. What is the meaning of each column value?**
+
+I ran `arp -a` from the Windows Command Prompt. The contents of my ARP cache on Interface 192.168.1.137 were:
+
+| Internet Address | Physical Address | Type |
+|---|---|---|
+| 192.168.1.1 | 10-2b-aa-xx-xx-xx | dynamic |
+| 192.168.1.86 | 64-e0-03-xx-xx-xx | dynamic |
+| 192.168.1.191 | e0-01-c7-xx-xx-xx | dynamic |
+| 224.0.0.22 | 01-00-5e-00-00-16 | static |
+| 239.255.255.250 | 01-00-5e-7f-ff-fa | static |
+
+**Column meanings:**
+
+**Internet Address** — the IP address of a device that this computer has recently communicated with or has a known mapping for
+
+**Physical Address** — the MAC address (48-bit Ethernet address) that corresponds to that IP on the local network
+
+**Type** — indicates how the entry was created. Dynamic means it was learned automatically through the ARP protocol and will expire after inactivity. Static means it was permanently assigned by the operating system (the 224.x and 239.x entries are Windows multicast addresses that are always present).
+
+![Windows Command Prompt output of arp -a listing the ARP cache entries and their type (dynamic/static)](images/fig-03.png)
+
+## ARP Request and Reply
+
+**10. What are the hexadecimal values for the source and destination addresses in the Ethernet frame containing the ARP request message?**
+
+Source: `30:d0:42:xx:xx:xx`
+Destination: `ff:ff:ff:ff:ff:ff`
+
+![Wireshark ARP-filtered packet list and frame detail for the ARP request frame, showing source and broadcast destination MAC addresses](images/fig-01.png)
+
+**11. Give the hexadecimal value for the two-byte Ethernet Frame type field. What upper layer protocol does this correspond to?**
+
+`08 06` at bytes 12-13 = `0x0806` = ARP
+
+**12. a) How many bytes from the very beginning of the Ethernet frame does the ARP opcode field begin?**
+
+Opcode starts at byte 20 (14 Ethernet header and 6 ARP fields before it)
+
+**b) What is the value of the opcode field within the ARP-payload part of the Ethernet frame in which an ARP request is made?**
+
+Opcode value = `0x0001` - Request
+
+**c) Does the ARP message contain the IP address of the sender?**
+
+Yes, Sender IP 192.168.1.1
+
+**d) Where in the ARP request does the "question" appear – the Ethernet address of the machine whose corresponding IP address is being queried?**
+
+In Target IP Address Field = 192.168.1.1 with MAC `00:00:00:00:00:00`
+
+**13. Now find the ARP reply that was sent in response to the ARP request.**
+
+**a) How many bytes from the very beginning of the Ethernet frame does the ARP opcode field begin?**
+
+Opcode still starts at byte 20
+
+**b) What is the value of the opcode field within the ARP-payload part of the Ethernet frame in which an ARP response is made?**
+
+Opcode value = `0x0002` - Reply
+
+**c) Where in the ARP message does the "answer" to the earlier ARP request appear – the IP address of the machine having the Ethernet address whose corresponding IP address is being queried?**
+
+Sender MAC Field = `10:2b:aa:xx:xx:xx`
+Sender IP = 192.168.1.1
+
+**14. What are the hexadecimal values for the source and destination addresses in the Ethernet frame containing the ARP reply message?**
+
+The source address in the Ethernet frame containing the ARP reply is **`10:2b:aa:xx:xx:xx`**, which belongs to my default gateway (Sagemcom router at 192.168.1.1). The destination address is **`30:d0:42:xx:xx:xx`**, which is my computer's MAC address. Unlike the ARP request which was sent to the broadcast address `ff:ff:ff:ff:ff:ff`, the ARP reply is **unicast** — sent directly back to the machine that made the request, since the router now knows exactly who to respond to.
+
+**15. Open the ethernet-ethereal-trace-1 trace file in http://gaia.cs.umass.edu/wireshark-labs/wireshark-traces.zip. The first and second ARP packets in this trace correspond to an ARP request sent by the computer running Wireshark, and the ARP reply sent to the computer running Wireshark by the computer with the ARP-requested Ethernet address. But there is yet another computer on this network, as indicated by packet 6 – another ARP request. Why is there no ARP reply (sent in response to the ARP request in packet 6) in the packet trace?**
+
+There is no ARP reply to packet 6 visible in the trace because the ARP request in packet 6 was sent by a **different computer** on the network — not the machine running Wireshark. ARP requests are broadcast, so every device on the LAN receives them, which is why Wireshark captured packet 6. However, ARP replies are **unicast** — sent directly back only to the machine that made the request. Since that reply was addressed to the other computer and not to the Wireshark machine, it was never received by our host and therefore never captured. The reply happened — it simply wasn't visible from our capture point.
+
+**EX-1. The arp command: `arp -s InetAddr EtherAddr` allows you to manually add an entry to the ARP cache that resolves the IP address InetAddr to the physical address EtherAddr. What would happen if, when you manually added an entry, you entered the correct IP address, but the wrong Ethernet address for that remote interface?**
+
+If the correct IP address is entered with the wrong Ethernet address using `arp -s`, the local machine will build all Ethernet frames destined for that IP address using the incorrect MAC. Since Ethernet delivery depends entirely on the MAC address at the local network level, those frames will either be delivered to the wrong device — which will discard them — or sent into the network with no device to receive them. The result is a complete loss of communication with that IP. Because the entry is static, the machine will not send a new ARP request to resolve the correct MAC — it assumes the cache entry is authoritative. The only fix is to manually delete the entry with `arp -d`. This principle is the foundation of ARP spoofing attacks, where an attacker inserts a false MAC mapping to intercept or disrupt traffic on a local network.
+
+**EX-2. What is the default amount of time that an entry remains in your ARP cache before being removed. You can determine this empirically (by monitoring the cache contents) or by looking this up in your operation system documentation. Indicate how/where you determined this value.**
+
+I located the registry key `HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters` using the Windows Registry Editor (regedit). After reviewing all values present in the Parameters key, neither `ArpCacheLife` nor `ArpCacheMinReferencedLife` were found. The absence of these keys confirms that Windows is operating on its **built-in default values**, which are:
+
+- **120 seconds (2 minutes)** — the default timeout for a dynamic ARP entry that has not been recently referenced
+- **600 seconds (10 minutes)** — the maximum lifetime for a dynamic entry that is actively being used
+
+When these registry keys are not explicitly set, Windows TCP/IP applies these defaults automatically per Microsoft's networking documentation. Static entries added via `arp -s` are unaffected by these timeouts and persist until manually removed or the system is restarted.
+
+![Windows Registry Editor showing the Tcpip\Parameters key checked for ArpCacheLife / ArpCacheMinReferencedLife values](images/fig-04.png)

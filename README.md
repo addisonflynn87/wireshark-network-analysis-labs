@@ -18,6 +18,7 @@ Each lab is a full write-up with questions, answers, analysis, and annotated pac
 | 08 | [802.11 WiFi](lab-08-80211/README.md) | Beacon frames, authentication, association, probe request/response |
 | 09 | [DNS](lab-09-dns/README.md) | DNS query/response structure, transport protocol and ports, record types |
 | 10 | [TCP](lab-10-tcp/README.md) | Connection setup, sequence/ACK numbers, RTO estimation, flow control, congestion control |
+| 11 | [HTTP](lab-11-http/README.md) | Request/response headers, conditional GET and caching, persistent connections, retrieving referenced objects, HTTP authentication |
 | 12 | [SSL/TLS](lab-12-ssl/README.md) | TLS 1.3 handshake sequence, record structure, cipher suite negotiation, encrypted handshake/application data |
 
 ## Skills Demonstrated
